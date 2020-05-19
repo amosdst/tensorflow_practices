@@ -1,2 +1,2 @@
 # tensorflow_practices
-practice coding while studying tensorflow ecosystem
+practice coding while studying the tensorflow ecosystem

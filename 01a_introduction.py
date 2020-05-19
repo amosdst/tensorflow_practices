@@ -213,7 +213,7 @@ print('y_test shape  = {}'.format(y_test.shape))
 # Q2:
 #  - The accuracy value of the training report differs greatly in between the two cases that the 'Dropout'
 #    layer was placed before and after the final 'Dense' layer.  It looks the placement of the dropout layer
-#    do affect the final training accuracy, and maybe the training time.  Refer to the 'hint [1]' section
+#    do affect the final training accuracy, and maybe the training time.  Refer to the 'hint[1]' section
 #    bellow.
 #  - Is there any generic way to state or any quantifiable measurement schemes to tell 'what is a good
 #    training result or a good performance' ?
@@ -252,7 +252,7 @@ if (modeling_scheme == LOCAL_MODELING_SCHEME.SEQUENTIAL) :
 
     # the output layer
     #  hint: accuracy was increased when the 'Dropout' layer was placed before the final 'Dense' layer
-    #        see 'hint [1]' comments at the training section bellow
+    #        see 'hint[1]' comments at the training section bellow
     #model.add(keras.layers.Dropout(0.2))
     model.add(keras.layers.Dense(10))
     model.add(keras.layers.Softmax())

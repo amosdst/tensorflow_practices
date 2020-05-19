@@ -203,12 +203,20 @@ print('y_test shape  = {}'.format(y_test.shape))
 #  - activation (argument) is None by default for certain amount of layer class
 #      care should be taken when composing model layers
 #
-# Q:
+# Q1:
 #  - The number of nodes in the input layer does not need to match the shape of the input vector.
 #  - For a 10 nodes inputs layer and a 13 element input vector, there will be 130 connections between the
 #    input vector and the input layer.
-#  - It looks there are no weighting and bias values within the connections between the input vector and the input layer.
-#    (Considered as the weights are all 1(s) and biases are all 0(s) ?)
+#  - It looks there are no weighting and bias values within the connections between the input vector and
+#    the input layer, since there is no associated trainable parameters in it's model summary.
+#
+# Q2:
+#  - The accuracy value of the training report differs greatly in between the two cases that the 'Dropout'
+#    layer was placed before and after the final 'Dense' layer.  It looks the placement of the dropout layer
+#    do affect the final training accuracy, and maybe the training time.  Refer to the 'hint [1]' section
+#    bellow.
+#  - Is there any generic way to state or any quantifiable measurement schemes to tell 'what is a good
+#    training result or a good performance' ?
 #
 
 import tensorflow.keras as keras

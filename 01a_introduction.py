@@ -264,8 +264,8 @@ if (modeling_scheme == LOCAL_MODELING_SCHEME.SEQUENTIAL) :
     # the output layer
     #  hint: accuracy was increased when the 'Dropout' layer was placed before the final 'Dense' layer
     #        see 'hint[1]' comments at the training section bellow
-    model.add(keras.layers.Dense(10))
     model.add(keras.layers.Dropout(0.2))
+    model.add(keras.layers.Dense(10))
     model.add(keras.layers.Softmax())
 
     # Model: "sequential"

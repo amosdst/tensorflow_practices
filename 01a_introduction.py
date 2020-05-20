@@ -544,6 +544,37 @@ model.fit(x_train, y_train, epochs = 5, batch_size = batch_size, validation_spli
 #      Process finished with exit code 0
 #
 
+##
+# ----------------------------------------------------------------------------
+# evaluate model-training performance
+
+print('\nPerformance Evaluation ...\n')
+
+# returns loss and metrics
+eval_report = model.evaluate(x_test, y_test, batch_size = batch_size)
+
+print('\nEvaluation report for metrics ({}) ...'.format(model.metrics_names))
+
+print(' {}'.format(eval_report))
+
+##
+# ----------------------------------------------------------------------------
+# generate per-sample predictions
+#
+#  - For small amount of inputs that fit in one batch, directly using __call__ is recommended for faster
+#    execution, e.g., model(x), or model(x, training=False) if you have layers such as
+#    tf.keras.layers.BatchNormalization that behaves differently during inference.
+#
+
+print('\nInference Check ...\n')
+
+# returns loss and metrics
+predictions = model.predict(x_test[:20])#, batch_size = batch_size)
+
+print('predictions shape = {}\n'.format(predictions.shape))
+
+print('prediction of   x_test[:20] = y_pred[:20] = {}\n'.format(tf.argmax(predictions, 1)))
+print('ground truth of x_test[:20] = y_test[:20] = {}\n'.format(y_test[:20]))
 
 ##
 # ----------------------------------------------------------------------------

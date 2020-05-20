@@ -113,6 +113,8 @@ import tensorflow as tf
 # ----------------------------------------------------------------------------
 
 print('\ncuda home : {}\n'.format(os.environ['CUDA_HOME']))
+print('path      : {}\n'.format(os.environ['PATH']))
+#print('ld_path   : {}\n'.format(os.environ['LD_LIBRARY_PATH']))
 
 print('tensor-flow version : %s\n' % tf.__version__)
 
@@ -154,6 +156,14 @@ print('y_train shape = {}'.format(y_train.shape))
 
 print('x_test shape  = {}'.format(x_test.shape))
 print('y_test shape  = {}'.format(y_test.shape))
+
+'''
+y_train = tf.keras.utils.to_categorical(y_train, num_classes = 10)
+y_test  = tf.keras.utils.to_categorical(y_test, num_classes = 10)
+
+print('y_train one-hot shape = {}'.format(y_train.shape))
+print('y_test one-hot shape  = {}'.format(y_test.shape))
+'''
 
 ##
 # ----------------------------------------------------------------------------
@@ -209,14 +219,14 @@ print('y_test shape  = {}'.format(y_test.shape))
 #    input vector and the input layer.
 #  - It looks there are no weighting and bias values within the connections between the input vector and
 #    the input layer, since there is no associated trainable parameters in it's model summary.
-#    => confirmed in the graph diagram './01a_introduction/input_vector_to_input_layer.png'
+#    => confirmed in the graph diagram './logs/01a_introduction/input_vector_to_input_layer.png'
 #
 # Q2:
 #  - The accuracy value of the training report differs greatly in between the two cases that the 'Dropout'
 #    layer was placed before and after the final 'Dense' layer.  It looks the placement of the dropout layer
 #    do affect the final training accuracy, and maybe the training time.  Refer to the 'hint[1]' section
 #    bellow.
-#  - Is there any generic way to state or any quantifiable measurement schemes to tell 'what is a good
+#  - Is there any generic way to state or any quantitative measurement schemes to tell 'what is a good
 #    training result or a good performance' ?
 #
 
@@ -236,7 +246,7 @@ if (modeling_scheme == LOCAL_MODELING_SCHEME.SEQUENTIAL) :
     # ----------------------------------------------------------------------------
     # The Sequential API Approach
 
-    print('\nSequential Modeling ...\n')
+    print('\nSequential Modeling Scheme\n')
 
     # the model
     model = keras.Sequential()
@@ -254,8 +264,8 @@ if (modeling_scheme == LOCAL_MODELING_SCHEME.SEQUENTIAL) :
     # the output layer
     #  hint: accuracy was increased when the 'Dropout' layer was placed before the final 'Dense' layer
     #        see 'hint[1]' comments at the training section bellow
-    #model.add(keras.layers.Dropout(0.2))
     model.add(keras.layers.Dense(10))
+    model.add(keras.layers.Dropout(0.2))
     model.add(keras.layers.Softmax())
 
     # Model: "sequential"
@@ -285,7 +295,7 @@ elif (modeling_scheme == LOCAL_MODELING_SCHEME.FUNCTIONAL) :
     # ----------------------------------------------------------------------------
     # The Functional API Approach
 
-    print('\nFunctional Modeling ...\n')
+    print('\nFunctional Modeling Scheme\n')
 
     # the input layers
     in_data    = keras.Input(shape = (x_train.shape[1], x_train.shape[2]), batch_size = batch_size)
@@ -413,8 +423,14 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 
 #x_train = x_train.astype(numpy.float32)
 
-model.fit(x_train, y_train, epochs = 5, batch_size = batch_size, validation_split = 0.1, verbose = 1)
+callbacks = [
+    keras.callbacks.TensorBoard(log_dir = './tb')
+#    #keras.callbacks.ModelCheckpoint(filepath = 'path/to/my/model_{epoch}', save_freq = 'epoch')
+]
 
+history = model.fit(x_train, y_train, epochs = 5, batch_size = batch_size, validation_split = 0.1, verbose = 1, callbacks = callbacks)
+
+print('\nTraining History ...\n\n{}\n'.format(history.history))
 
 # hint[1] accuracy was increased when the 'Dropout' layer was placed before the 'final 'Dense' output layer
 #
@@ -460,6 +476,21 @@ model.fit(x_train, y_train, epochs = 5, batch_size = batch_size, validation_spli
 #      10800/10800 [==============================] - 14s 1ms/step - loss: 0.2440 - accuracy: 0.8781 - val_loss: 0.0863 - val_accuracy: 0.9770
 #      Out[12]: <tensorflow.python.keras.callbacks.History at 0x7f339c0df080>
 #
+#      Performance Evaluation ...
+#
+#      2000/2000 [==============================] - 2s 1ms/step - loss: 0.0860 - accuracy: 0.9767
+#
+#      Evaluation report for metrics (['loss', 'accuracy']) ...
+#       [0.08598091453313828, 0.9767000079154968]
+#
+#      Inference Check ...
+#
+#      predictions shape = (20, 10)
+#
+#      prediction of   x_test[:20] = y_pred[:20] = [7 2 1 0 4 1 4 9 6 9 0 6 9 0 1 5 9 7 3 4]
+#
+#      ground truth of x_test[:20] = y_test[:20] = [7 2 1 0 4 1 4 9 5 9 0 6 9 0 1 5 9 7 3 4]
+#
 # case 2 (higher accuracy value)
 #
 #  - the 'Dropout' layer was placed before the final 'Dense' output layer
@@ -501,9 +532,22 @@ model.fit(x_train, y_train, epochs = 5, batch_size = batch_size, validation_spli
 #      Epoch 5/5
 #      10800/10800 [==============================] - 15s 1ms/step - loss: 0.0499 - accuracy: 0.9844 - val_loss: 0.0752 - val_accuracy: 0.9785
 #
-#      Process finished with exit code 0
+#      Performance Evaluation ...
 #
-# case 2 (also higher accuracy value)
+#      2000/2000 [==============================] - 2s 1ms/step - loss: 0.0860 - accuracy: 0.9767
+#
+#      Evaluation report for metrics (['loss', 'accuracy']) ...
+#       [0.08598091453313828, 0.9767000079154968]
+#
+#      Inference Check ...
+#
+#      predictions shape = (20, 10)
+#
+#      prediction of   x_test[:20] = y_pred[:20] = [7 2 1 0 4 1 4 9 5 9 0 6 9 0 1 5 9 7 3 4]
+#
+#      ground truth of x_test[:20] = y_test[:20] = [7 2 1 0 4 1 4 9 5 9 0 6 9 0 1 5 9 7 3 4]
+#
+# case 3 (also higher accuracy value)
 #
 #  - no 'Dropout' layer
 #
@@ -575,9 +619,6 @@ print('predictions shape = {}\n'.format(predictions.shape))
 
 print('prediction of   x_test[:20] = y_pred[:20] = {}\n'.format(tf.argmax(predictions, 1)))
 print('ground truth of x_test[:20] = y_test[:20] = {}\n'.format(y_test[:20]))
-
-##
-# ----------------------------------------------------------------------------
 
 
 ##

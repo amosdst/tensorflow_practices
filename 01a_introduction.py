@@ -209,6 +209,7 @@ print('y_test shape  = {}'.format(y_test.shape))
 #    input vector and the input layer.
 #  - It looks there are no weighting and bias values within the connections between the input vector and
 #    the input layer, since there is no associated trainable parameters in it's model summary.
+#    => confirmed in the graph diagram './01a_introduction/input_vector_to_input_layer.png'
 #
 # Q2:
 #  - The accuracy value of the training report differs greatly in between the two cases that the 'Dropout'

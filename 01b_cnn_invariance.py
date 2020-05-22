@@ -220,99 +220,67 @@ print('y_test  one-hot shape = {}'.format(y_test.shape))
 
 import tensorflow.keras as keras
 
-model_name = '01b_resnet'
+model_name = '01b_cnn_invariance'
 batch_size = 16
 nr_epochs = 16
+nr_filters = 32
 
 # ----------------------------------------------------------------------------
-# The Microsoft ResNet type of CNN Model for Classifier
+# The Convolutional Neural Network Model for Classifier
 #
 
-def conv_block(nr_filters, x_in) :
+model = keras.Sequential()
 
-    x_out = keras.layers.Conv2D(filters = nr_filters, kernel_size = (3, 3), strides = (2, 2), padding = 'same', activation = 'relu')(x_in)
-    x_out = keras.layers.Conv2D(filters = nr_filters, kernel_size = (3, 3), strides = (2, 2), padding = 'same', activation = 'relu')(x_out)
+# (front-end) the convolution layer (generation of feature maps)
+model.add(keras.layers.Conv2D(filters = nr_filters, kernel_size = (3, 3), strides = (1, 1), padding = 'same', activation = 'relu',
+                              input_shape = (x_train.shape[1], x_train.shape[2], 1), batch_size = batch_size))
 
-    return x_out
+# (front-end) the pooling layer (downsampling of feature-maps)
+model.add(keras.layers.MaxPooling2D(pool_size = (2, 2), strides = (2, 2), padding = 'same'))
 
-def residual_block(nr_filters, x_in) :
+# ---------------------------
+# following layers are analogous to those in the practice '01a_introduction'.
 
-    x_out = x_in
-    x_out = keras.layers.Conv2D(filters = nr_filters, kernel_size = (3, 3), strides = (1, 1), padding = 'same', activation = 'relu')(x_out)
-    x_out = keras.layers.Conv2D(filters = nr_filters, kernel_size = (3, 3), strides = (1, 1), padding = 'same', activation = 'relu')(x_out)
-    x_out = keras.layers.add([x_in, x_out])
-
-    return x_out
-
-# the input
-x_in = keras.Input(shape = (x_train.shape[1], x_train.shape[2], 1), batch_size = batch_size)
-
-# (front-end) the first residual block
-x = residual_block(16, x_in)
-x = conv_block(32, x)
-
-# (front-end) the second residual block
-x = residual_block(32, x)
-x = conv_block(64, x)
-
-# (front-end)
-# ......
-x = residual_block(64, x)
-#x = conv_block(128, x)
-
-#x = residual_block(128, x)
-#x = conv_block(256, x)
-
-# (front-end) the final pooling layer
-x = keras.layers.GlobalAveragePooling2D()(x)
+# (front-end) reshaping feature-maps for interfacing with the input layer of the following deep network
+model.add(keras.layers.Flatten(data_format = 'channels_last'))
 
 # (back-end) the input layer
-#x = keras.layers.Flatten(data_format = 'channels_last')(x)
-#x = keras.layers.Dense(100)(x)
-#x = keras.activations.relu(x)
+model.add(keras.layers.Dense(100, activation = 'relu'))
 
 # (back-end) the hidden layers
-#x = keras.layers.Dense(200, activation = 'sigmoid')(x)
+model.add(keras.layers.Dense(200, activation = 'sigmoid'))
 
 # (back-end) the output layer
-#x = keras.layers.Dropout(rate = 0.2)(x)
-y = keras.layers.Dense(10, activation = 'softmax')(x)
+#  hint: accuracy was increased when the 'Dropout' layer was placed before the final 'Dense' layer
+#        see 'hint[1]' comments at the training section bellow
+#model.add(keras.layers.Dropout(0.2))
+model.add(keras.layers.Dense(10))
+model.add(keras.layers.Softmax())
 
-# the model
-model = keras.Model(x_in, y)
-
-# Model: "model_3"
-# __________________________________________________________________________________________________
-# Layer (type)                    Output Shape         Param #     Connected to
-# ==================================================================================================
-# input_5 (InputLayer)            [(5, 28, 28, 1)]     0
-# __________________________________________________________________________________________________
-# conv2d_16 (Conv2D)              (5, 28, 28, 16)      160         input_5[0][0]
-# __________________________________________________________________________________________________
-# conv2d_17 (Conv2D)              (5, 28, 28, 16)      2320        conv2d_16[0][0]
-# __________________________________________________________________________________________________
-# add_5 (Add)                     (5, 28, 28, 16)      0           input_5[0][0]
-#                                                                  conv2d_17[0][0]
-# __________________________________________________________________________________________________
-# conv2d_18 (Conv2D)              (5, 14, 14, 32)      4640        add_5[0][0]
-# __________________________________________________________________________________________________
-# conv2d_19 (Conv2D)              (5, 7, 7, 32)        9248        conv2d_18[0][0]
-# __________________________________________________________________________________________________
-# conv2d_20 (Conv2D)              (5, 7, 7, 32)        9248        conv2d_19[0][0]
-# __________________________________________________________________________________________________
-# conv2d_21 (Conv2D)              (5, 7, 7, 32)        9248        conv2d_20[0][0]
-# __________________________________________________________________________________________________
-# add_6 (Add)                     (5, 7, 7, 32)        0           conv2d_19[0][0]
-#                                                                  conv2d_21[0][0]
-# __________________________________________________________________________________________________
-# global_average_pooling2d_3 (Glo (5, 32)              0           add_6[0][0]
-# __________________________________________________________________________________________________
-# dense_3 (Dense)                 (5, 10)              330         global_average_pooling2d_3[0][0]
-# ==================================================================================================
-# Total params: 35,194
-# Trainable params: 35,194
+# Model: "sequential_1"
+# _________________________________________________________________
+# Layer (type)                 Output Shape              Param #
+# =================================================================
+# conv2d (Conv2D)              (5, 28, 28, 16)           160
+# _________________________________________________________________
+# max_pooling2d (MaxPooling2D) (5, 14, 14, 16)           0
+# _________________________________________________________________
+# flatten (Flatten)            (5, 3136)                 0
+# _________________________________________________________________
+# dense (Dense)                (5, 100)                  313700
+# _________________________________________________________________
+# dense_1 (Dense)              (5, 200)                  20200
+# _________________________________________________________________
+# dropout (Dropout)            (5, 200)                  0
+# _________________________________________________________________
+# dense_2 (Dense)              (5, 10)                   2010
+# _________________________________________________________________
+# softmax (Softmax)            (5, 10)                   0
+# =================================================================
+# Total params: 336,070
+# Trainable params: 336,070
 # Non-trainable params: 0
-# __________________________________________________________________________________________________
+# _________________________________________________________________
 #
 model.summary()
 
@@ -376,6 +344,31 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 
 ##
 # ----------------------------------------------------------------------------
+# data invariance via keras.preprocessing.image.ImageDataGenerator
+#
+#  https://keras.io/api/preprocessing/image/#imagedatagenerator-class
+#
+
+x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)
+x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2], 1)
+
+data_generator = keras.preprocessing.image.ImageDataGenerator(
+    rotation_range = 16,
+    width_shift_range = 0.1,
+    height_shift_range = 0.1,
+    shear_range = 16,
+    zoom_range = 0.1,
+    horizontal_flip = False,
+    vertical_flip = False,
+    data_format = 'channels_last',
+    validation_split = 0.1,
+    #dtype = numpy.float32,
+)
+
+data_generator.fit(x_train)
+
+##
+# ----------------------------------------------------------------------------
 # model training
 #
 #  steps_per_epoch * batch_size = number_of_rows_in_train_data
@@ -404,10 +397,8 @@ callbacks = [
     #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
 ]
 
-x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)
-x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2], 1)
-
-history = model.fit(x_train, y_train, epochs = nr_epochs, batch_size = batch_size, validation_split = 0.1, verbose = 1, callbacks = callbacks)
+#history = model.fit(data_generator.flow(x_train, y_train, batch_size = batch_size), epochs = nr_epochs, verbose = 1, callbacks = callbacks)
+history = model.fit(data_generator.flow(x_train, y_train, batch_size = batch_size), epochs = nr_epochs, steps_per_epoch = len(x_train) / batch_size, verbose = 1, callbacks = callbacks)
 
 print('\nTraining History ...\n\n{}\n'.format(history.history))
 

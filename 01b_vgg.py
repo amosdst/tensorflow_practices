@@ -149,7 +149,7 @@ print(device_lib.list_local_devices())
 mnist = tf.keras.datasets.mnist
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
-x_train, x_test = x_train / 255.0, x_test / 255.0
+x_train, x_test = (x_train / 255.0).astype(numpy.float32), (x_test / 255.0).astype(numpy.float32)
 
 print('x_train shape = {}'.format(x_train.shape))
 print('y_train shape = {}'.format(y_train.shape))
@@ -220,7 +220,9 @@ print('y_test  one-hot shape = {}'.format(y_test.shape))
 
 import tensorflow.keras as keras
 
-batch_size = 5
+model_name = '01b_vgg'
+batch_size = 16
+nr_epochs = 16
 
 # ----------------------------------------------------------------------------
 # The Oxford Visual Geometry Group type of CNN Model for Classifier
@@ -246,8 +248,8 @@ conv_group(model, 1, 16)
 #  - 2x convolution layer (generation of feature maps)
 #  - 1x pooling layer (downsampling of feature-maps)
 conv_group(model, 2, 32)
-#conv_group(model, 3, 128)  // no much help ?
-#conv_group(model, 3, 128)  // no much help ?
+#conv_group(model, 3, 64)
+#conv_group(model, 3, 128)
 
 # ---------------------------
 # following layers are analogous to those in the practice '01a_introduction'.
@@ -304,9 +306,9 @@ model.summary()
 #   https://keras.io/api/losses/
 #
 #   probabilistic losses
-#    'binary_crossentropy'
-#    'categorical_crossentropy'
-#    'sparse_categorical_crossentropy'
+#    'binary_crossentropy'                          for two-classes (0 or 1) classification
+#    'categorical_crossentropy'                     for multi-class classification
+#    'sparse_categorical_crossentropy'              categorical_crossentropy() with build-in one-hot conversion
 #    'poisson'
 #    'binary_crossentropy'
 #    'binary_crossentropy'
@@ -340,6 +342,16 @@ model.summary()
 #   'nadam'     Nadam       Adam is essentially RMSprop with momentum, Nadam is Adam with Nesterov momentum
 #   'ftrl'      Ftrl        https://www.eecs.tufts.edu/~dsculley/papers/ad-click-prediction.pdf
 #
+# useful tools to deal with one-hot conversion
+#
+#   keras.utils.to_categorical(y, num_classes)      scaler to one-hot binary vector/matrix
+#
+#   tf.argmax(y, axis)                              one-hot vector to scaler
+#                                                   (not compatible with keras.utils.to_categorical() -- unable to do the inverse conversion directly)
+#
+#   numpy.argsort(a)[i]                             sort the array-like 'a' in ascending order, replace the item
+#                                                   with its index, and then take the i'th index
+#
 
 model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
 
@@ -347,18 +359,36 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 # ----------------------------------------------------------------------------
 # model training
 #
+#  steps_per_epoch * batch_size = number_of_rows_in_train_data
+#
+#    When you provide 's' steps per epoch , Each 's' step will have 'x' batches each consisting 'n' samples
+#    are sent to fit_generator.  So, if you specify 5 steps per epoch, each epoch computes 'x' batches each
+#    consisting of 'n' samples 5 times, then the next epoch is started!
+#
+#  How keras behave when step_per_epoch != NUM_OF_SAMPLES / batch_size ...
+#
+#    https://github.com/keras-team/keras/issues/10164
+#
+#    We launch a process to creates the samples.
+#    1. The process knows that you have 10 batches per epoch from the Sequence itself (len is defined)
+#       Keras starts a loop asking for 5 batches, because you asked for an epoch of 5 steps_per_epoch.
+#    2. It computes the loss on those 5 batches, calls you callbacks etc.
+#       Now Keras starts its second epoch and it asked for 5 batches.
+#    3. The process is still creating the samples for batches 6..10 so it return those. Then it restarts
+#       to the sample 0.
+#
 
 #x_train = x_train.astype(numpy.float32)
 
 callbacks = [
-    keras.callbacks.TensorBoard(log_dir = './tb')
-#    #keras.callbacks.ModelCheckpoint(filepath = 'path/to/my/model_{epoch}', save_freq = 'epoch')
+    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name))
+    #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
 ]
 
 x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)
 x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2], 1)
 
-history = model.fit(x_train, y_train, epochs = 5, batch_size = batch_size, validation_split = 0.1, verbose = 1, callbacks = callbacks)
+history = model.fit(x_train, y_train, epochs = nr_epochs, batch_size = batch_size, validation_split = 0.1, verbose = 1, callbacks = callbacks)
 
 print('\nTraining History ...\n\n{}\n'.format(history.history))
 
@@ -428,7 +458,7 @@ print('ground truth of x_test[:20] = y_test[:20] = {}\n'.format(y_test[:20]))
 # ground truth of x_test[:20] = y_test[:20] = [7 2 1 0 4 1 4 9 5 9 0 6 9 0 1 5 9 7 3 4]
 
 ##
-
+# ----------------------------------------------------------------------------
 # manually inspect mismatching items ..........................|
 #                                                              v
 # prediction of   x_test[:20] = y_pred[:20] = [7 2 1 0 4 1 4 9 6 9 0 6 9 0 1 5 9 7 3 4]
@@ -462,7 +492,7 @@ for i in range(len(y_test)) :
 
         # ---------
 
-        img_digit = x_test[i, :, :]
+        img_digit = (x_test[i, :, :] * 255.0).astype(numpy.uint8)
 
         cv2.imshow('mnist_image', img_digit)
         cv2.moveWindow('mnist_image', 10, 10)

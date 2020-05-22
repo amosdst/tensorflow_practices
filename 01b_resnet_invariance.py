@@ -220,9 +220,10 @@ print('y_test  one-hot shape = {}'.format(y_test.shape))
 
 import tensorflow.keras as keras
 
-model_name = '01b_resnet'
+model_name = '01b_resnet_invariance'
 batch_size = 16
 nr_epochs = 16
+nr_filters = 32
 
 # ----------------------------------------------------------------------------
 # The Microsoft ResNet type of CNN Model for Classifier
@@ -248,20 +249,20 @@ def residual_block(nr_filters, x_in) :
 x_in = keras.Input(shape = (x_train.shape[1], x_train.shape[2], 1), batch_size = batch_size)
 
 # (front-end) the first residual block
-x = residual_block(16, x_in)
-x = conv_block(32, x)
+x = residual_block(nr_filters, x_in)
+x = conv_block(nr_filters * 2, x)
 
 # (front-end) the second residual block
-x = residual_block(32, x)
-x = conv_block(64, x)
+x = residual_block(nr_filters * 2, x)
+x = conv_block(nr_filters * 4, x)
 
 # (front-end)
 # ......
-x = residual_block(64, x)
-#x = conv_block(128, x)
+x = residual_block(nr_filters * 4, x)
+#x = conv_block(nr_filters * 8, x)
 
-#x = residual_block(128, x)
-#x = conv_block(256, x)
+#x = residual_block(nr_filters * 8, x)
+#x = conv_block(nr_filters * 16, x)
 
 # (front-end) the final pooling layer
 x = keras.layers.GlobalAveragePooling2D()(x)
@@ -376,6 +377,31 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 
 ##
 # ----------------------------------------------------------------------------
+# data invariance via keras.preprocessing.image.ImageDataGenerator
+#
+#  https://keras.io/api/preprocessing/image/#imagedatagenerator-class
+#
+
+x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)
+x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2], 1)
+
+data_generator = keras.preprocessing.image.ImageDataGenerator(
+    rotation_range = 16,
+    width_shift_range = 0.1,
+    height_shift_range = 0.1,
+    shear_range = 16,
+    zoom_range = 0.1,
+    horizontal_flip = False,
+    vertical_flip = False,
+    data_format = 'channels_last',
+    validation_split = 0.1,
+    #dtype = numpy.float32,
+)
+
+data_generator.fit(x_train)
+
+##
+# ----------------------------------------------------------------------------
 # model training
 #
 #  steps_per_epoch * batch_size = number_of_rows_in_train_data
@@ -404,10 +430,8 @@ callbacks = [
     #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
 ]
 
-x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)
-x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2], 1)
-
-history = model.fit(x_train, y_train, epochs = nr_epochs, batch_size = batch_size, validation_split = 0.1, verbose = 1, callbacks = callbacks)
+#history = model.fit(data_generator.flow(x_train, y_train, batch_size = batch_size), epochs = nr_epochs, verbose = 1, callbacks = callbacks)
+history = model.fit(data_generator.flow(x_train, y_train, batch_size = batch_size), epochs = nr_epochs, steps_per_epoch = len(x_train) / batch_size, verbose = 1, callbacks = callbacks)
 
 print('\nTraining History ...\n\n{}\n'.format(history.history))
 

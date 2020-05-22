@@ -149,7 +149,7 @@ print(device_lib.list_local_devices())
 mnist = tf.keras.datasets.mnist
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
-x_train, x_test = x_train / 255.0, x_test / 255.0
+x_train, x_test = (x_train / 255.0).astype(numpy.float32), (x_test / 255.0).astype(numpy.float32)
 
 print('x_train shape = {}'.format(x_train.shape))
 print('y_train shape = {}'.format(y_train.shape))
@@ -162,7 +162,7 @@ y_train = tf.keras.utils.to_categorical(y_train, num_classes = 10)
 y_test  = tf.keras.utils.to_categorical(y_test, num_classes = 10)
 
 print('y_train one-hot shape = {}'.format(y_train.shape))
-print('y_test one-hot shape  = {}'.format(y_test.shape))
+print('y_test  one-hot shape = {}'.format(y_test.shape))
 '''
 
 ##
@@ -229,6 +229,10 @@ print('y_test one-hot shape  = {}'.format(y_test.shape))
 #  - Is there any generic way to state or any quantitative measurement schemes to tell 'what is a good
 #    training result or a good performance' ?
 #
+# Q3:
+#  - Is there good rule of thub way about determining the number of neurons of each layer to start with ?
+#    (such as from hints of targeting number of classifications ?)
+#
 
 import tensorflow.keras as keras
 
@@ -239,7 +243,9 @@ class LOCAL_MODELING_SCHEME(IntEnum) :
 modeling_scheme = LOCAL_MODELING_SCHEME.SEQUENTIAL
 #modeling_scheme = LOCAL_MODELING_SCHEME.FUNCTIONAL
 
-batch_size = 5
+model_name = '01a_introduction'
+batch_size = 16
+nr_epochs = 16
 
 if (modeling_scheme == LOCAL_MODELING_SCHEME.SEQUENTIAL) :
 
@@ -389,46 +395,64 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 # ----------------------------------------------------------------------------
 # model training
 #
-# example output (sequential)
+#  steps_per_epoch * batch_size = number_of_rows_in_train_data
 #
-#  Epoch 1/5
-#  10800/10800 [==============================] - 16s 1ms/step - loss: 0.4634 - accuracy: 0.8178 - val_loss: 0.1070 - val_accuracy: 0.9665
-#  Epoch 2/5
-#  10800/10800 [==============================] - 15s 1ms/step - loss: 0.3130 - accuracy: 0.8579 - val_loss: 0.0828 - val_accuracy: 0.9743
-#  Epoch 3/5
-#  10800/10800 [==============================] - 14s 1ms/step - loss: 0.2780 - accuracy: 0.8689 - val_loss: 0.0774 - val_accuracy: 0.9777
-#  Epoch 4/5
-#  10800/10800 [==============================] - 14s 1ms/step - loss: 0.2593 - accuracy: 0.8724 - val_loss: 0.0902 - val_accuracy: 0.9747
-#  Epoch 5/5
-#  10800/10800 [==============================] - 14s 1ms/step - loss: 0.2440 - accuracy: 0.8781 - val_loss: 0.0863 - val_accuracy: 0.9770
-#  Out[12]: <tensorflow.python.keras.callbacks.History at 0x7f339c0df080>
+#    When you provide 's' steps per epoch , Each 's' step will have 'x' batches each consisting 'n' samples
+#    are sent to fit_generator.  So, if you specify 5 steps per epoch, each epoch computes 'x' batches each
+#    consisting of 'n' samples 5 times, then the next epoch is started!
 #
-#  Process finished with exit code 0
-
-# example output (functional)
+#  How keras behave when step_per_epoch != NUM_OF_SAMPLES / batch_size ...
 #
-#  Epoch 1/5
-#  10800/10800 [==============================] - 15s 1ms/step - loss: 0.2507 - accuracy: 0.9229 - val_loss: 0.1062 - val_accuracy: 0.9685
-#  Epoch 2/5
-#  10800/10800 [==============================] - 15s 1ms/step - loss: 0.1115 - accuracy: 0.9662 - val_loss: 0.0891 - val_accuracy: 0.9723
-#  Epoch 3/5
-#  10800/10800 [==============================] - 15s 1ms/step - loss: 0.0795 - accuracy: 0.9752 - val_loss: 0.0913 - val_accuracy: 0.9718
-#  Epoch 4/5
-#  10800/10800 [==============================] - 15s 1ms/step - loss: 0.0635 - accuracy: 0.9803 - val_loss: 0.0756 - val_accuracy: 0.9780
-#  Epoch 5/5
-#  10800/10800 [==============================] - 15s 1ms/step - loss: 0.0511 - accuracy: 0.9835 - val_loss: 0.0724 - val_accuracy: 0.9817
+#    https://github.com/keras-team/keras/issues/10164
 #
-#  Process finished with exit code 0
+#    We launch a process to creates the samples.
+#    1. The process knows that you have 10 batches per epoch from the Sequence itself (len is defined)
+#       Keras starts a loop asking for 5 batches, because you asked for an epoch of 5 steps_per_epoch.
+#    2. It computes the loss on those 5 batches, calls you callbacks etc.
+#       Now Keras starts its second epoch and it asked for 5 batches.
+#    3. The process is still creating the samples for batches 6..10 so it return those. Then it restarts
+#       to the sample 0.
+#
+#  example output (sequential)
+#
+#    Epoch 1/5
+#    10800/10800 [==============================] - 16s 1ms/step - loss: 0.4634 - accuracy: 0.8178 - val_loss: 0.1070 - val_accuracy: 0.9665
+#    Epoch 2/5
+#    10800/10800 [==============================] - 15s 1ms/step - loss: 0.3130 - accuracy: 0.8579 - val_loss: 0.0828 - val_accuracy: 0.9743
+#    E poch 3/5
+#    10800/10800 [==============================] - 14s 1ms/step - loss: 0.2780 - accuracy: 0.8689 - val_loss: 0.0774 - val_accuracy: 0.9777
+#    Epoch 4/5
+#    10800/10800 [==============================] - 14s 1ms/step - loss: 0.2593 - accuracy: 0.8724 - val_loss: 0.0902 - val_accuracy: 0.9747
+#    Epoch 5/5
+#    10800/10800 [==============================] - 14s 1ms/step - loss: 0.2440 - accuracy: 0.8781 - val_loss: 0.0863 - val_accuracy: 0.9770
+#    Out[12]: <tensorflow.python.keras.callbacks.History at 0x7f339c0df080>
+#
+#    Process finished with exit code 0
+#
+#  example output (functional)
+#
+#    Epoch 1/5
+#    10800/10800 [==============================] - 15s 1ms/step - loss: 0.2507 - accuracy: 0.9229 - val_loss: 0.1062 - val_accuracy: 0.9685
+#    Epoch 2/5
+#    10800/10800 [==============================] - 15s 1ms/step - loss: 0.1115 - accuracy: 0.9662 - val_loss: 0.0891 - val_accuracy: 0.9723
+#    Epoch 3/5
+#    10800/10800 [==============================] - 15s 1ms/step - loss: 0.0795 - accuracy: 0.9752 - val_loss: 0.0913 - val_accuracy: 0.9718
+#    Epoch 4/5
+#    10800/10800 [==============================] - 15s 1ms/step - loss: 0.0635 - accuracy: 0.9803 - val_loss: 0.0756 - val_accuracy: 0.9780
+#    Epoch 5/5
+#    10800/10800 [==============================] - 15s 1ms/step - loss: 0.0511 - accuracy: 0.9835 - val_loss: 0.0724 - val_accuracy: 0.9817
+#
+#    Process finished with exit code 0
 #
 
 #x_train = x_train.astype(numpy.float32)
 
 callbacks = [
-    keras.callbacks.TensorBoard(log_dir = './tb')
-#    #keras.callbacks.ModelCheckpoint(filepath = 'path/to/my/model_{epoch}', save_freq = 'epoch')
+    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name))
+    #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
 ]
 
-history = model.fit(x_train, y_train, epochs = 5, batch_size = batch_size, validation_split = 0.1, verbose = 1, callbacks = callbacks)
+history = model.fit(x_train, y_train, epochs = nr_epochs, batch_size = batch_size, validation_split = 0.1, verbose = 1, callbacks = callbacks)
 
 print('\nTraining History ...\n\n{}\n'.format(history.history))
 
@@ -613,13 +637,132 @@ print(' {}'.format(eval_report))
 print('\nInference Check ...\n')
 
 # returns loss and metrics
-predictions = model.predict(x_test[:20])#, batch_size = batch_size)
+predictions = model.predict(x_test)#, batch_size = batch_size)
 
 print('predictions shape = {}\n'.format(predictions.shape))
 
-print('prediction of   x_test[:20] = y_pred[:20] = {}\n'.format(tf.argmax(predictions, 1)))
+print('prediction of   x_test[:20] = y_pred[:20] = {}\n'.format(tf.argmax(predictions[0:20, :], 1)))
 print('ground truth of x_test[:20] = y_test[:20] = {}\n'.format(y_test[:20]))
 
+# expected output ...
+#
+# Epoch 1/5
+# 10800/10800 [==============================] - 23s 2ms/step - loss: 0.1650 - accuracy: 0.9490 - val_loss: 0.0564 - val_accuracy: 0.9820
+# Epoch 2/5
+# 10800/10800 [==============================] - 24s 2ms/step - loss: 0.0565 - accuracy: 0.9827 - val_loss: 0.0472 - val_accuracy: 0.9863
+# Epoch 3/5
+# 10800/10800 [==============================] - 25s 2ms/step - loss: 0.0360 - accuracy: 0.9888 - val_loss: 0.0600 - val_accuracy: 0.9843
+# Epoch 4/5
+# 10800/10800 [==============================] - 22s 2ms/step - loss: 0.0237 - accuracy: 0.9922 - val_loss: 0.0599 - val_accuracy: 0.9857
+# Epoch 5/5
+# 10800/10800 [==============================] - 22s 2ms/step - loss: 0.0182 - accuracy: 0.9940 - val_loss: 0.0549 - val_accuracy: 0.9878
+#
+# Training History ...
+#
+# {'loss': [0.16497066617012024, 0.05647317320108414, 0.036025892943143845, 0.023727182298898697, 0.018161695450544357], 'accuracy': [0.9489629864692688, 0.9826666712760925, 0.9888148307800293, 0.9921666383743286, 0.9940370321273804], 'val_loss': [0.05641787871718407, 0.047156356275081635, 0.05997416004538536, 0.059918370097875595, 0.05494614318013191], 'val_accuracy': [0.9819999933242798, 0.9863333106040955, 0.984333336353302, 0.9856666922569275, 0.9878333210945129]}
+#
+#
+# Performance Evaluation ...
+#
+# 2000/2000 [==============================] - 2s 1ms/step - loss: 0.0555 - accuracy: 0.9862
+#
+# Evaluation report for metrics (['loss', 'accuracy']) ...
+#  [0.055539220571517944, 0.9861999750137329]
+#
+# Inference Check ...
+#
+# predictions shape = (20, 10)
+#
+# prediction of   x_test[:20] = y_pred[:20] = [7 2 1 0 4 1 4 9 6 9 0 6 9 0 1 5 9 7 3 4]
+#
+# ground truth of x_test[:20] = y_test[:20] = [7 2 1 0 4 1 4 9 5 9 0 6 9 0 1 5 9 7 3 4]
+
+##
+# ----------------------------------------------------------------------------
+# manually inspect mismatching items ..........................|
+#                                                              v
+# prediction of   x_test[:20] = y_pred[:20] = [7 2 1 0 4 1 4 9 6 9 0 6 9 0 1 5 9 7 3 4]
+# ground truth of x_test[:20] = y_test[:20] = [7 2 1 0 4 1 4 9 5 9 0 6 9 0 1 5 9 7 3 4]
+#
+
+cv2.namedWindow('mnist_image', flags = cv2.WINDOW_AUTOSIZE)
+cv2.namedWindow('expected',    flags = cv2.WINDOW_AUTOSIZE)
+cv2.namedWindow('best_guess',  flags = cv2.WINDOW_AUTOSIZE)
+cv2.namedWindow('second_best', flags = cv2.WINDOW_AUTOSIZE)
+cv2.namedWindow('dummy',       flags = cv2.WINDOW_AUTOSIZE)
+
+img_expected = numpy.zeros((x_test.shape[1], x_test.shape[2]), dtype = numpy.uint8)
+img_label1   = numpy.zeros((x_test.shape[1], x_test.shape[2]), dtype = numpy.uint8)
+img_label2   = numpy.zeros((x_test.shape[1], x_test.shape[2]), dtype = numpy.uint8)
+img_dummy    = numpy.zeros((x_test.shape[1], x_test.shape[2]), dtype = numpy.uint8)
+
+x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2])
+
+predicted = tf.argmax(predictions, 1)
+
+for i in range(len(y_test)) :
+
+    label_predicted = predicted[i]
+    label_second_best = numpy.argsort(predictions[i])[-2]
+    label = y_test[i]
+
+    if (label_predicted != label) :
+
+        print('[{}] label){} predicted){} second_best){} logit = {}'.format(i, label, label_predicted, label_second_best, predictions[i]))
+
+        # ---------
+
+        img_digit = (x_test[i, :, :] * 255.0).astype(numpy.uint8)
+
+        cv2.imshow('mnist_image', img_digit)
+        cv2.moveWindow('mnist_image', 10, 10)
+
+        # ---------
+
+        img_expected.fill(120)
+        cv2.putText(img_expected, text = '%u' % label,
+                    org = (5, 22), fontFace = cv2.FONT_HERSHEY_SIMPLEX, fontScale = 0.8,
+                    color = 255, lineType = cv2.LINE_AA)
+
+        cv2.imshow('expected', img_expected)
+        cv2.moveWindow('expected', 400, 10)
+
+        img_label1.fill(120)
+        cv2.putText(img_label1, text = '%u' % label_predicted,
+                    org = (5, 22), fontFace = cv2.FONT_HERSHEY_SIMPLEX, fontScale = 0.8,
+                    color = 255, lineType = cv2.LINE_AA)
+
+        cv2.imshow('best_guess', img_label1)
+        cv2.moveWindow('best_guess', 10, 200)
+
+        img_label2.fill(120)
+        cv2.putText(img_label2, text = '%u' % label_second_best,
+                    org = (5, 22), fontFace = cv2.FONT_HERSHEY_SIMPLEX, fontScale = 0.8,
+                    color = 255, lineType = cv2.LINE_AA)
+
+        cv2.imshow('second_best', img_label2)
+        cv2.moveWindow('second_best', 400, 200)
+
+        # ---------
+        # refersh a dummy window temporarily fixes issue of delayed update of the label window
+        #img_dummy.fill(0)
+        cv2.imshow('dummy', img_dummy)
+        cv2.moveWindow('dummy', 10, 400)
+
+        # ---------
+
+        quit = False
+
+        while True :
+            key = cv2.waitKey(1)
+            if (key & 0xff) == ord('q') :
+                quit = True
+                break
+            elif (key & 0xff) == ord(' ') :
+                break
+
+        if (quit) :
+            break
 
 ##
 # ----------------------------------------------------------------------------

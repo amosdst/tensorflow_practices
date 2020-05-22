@@ -223,6 +223,7 @@ import tensorflow.keras as keras
 model_name = '01b_vgg'
 batch_size = 16
 nr_epochs = 16
+nr_filters = 32
 
 # ----------------------------------------------------------------------------
 # The Oxford Visual Geometry Group type of CNN Model for Classifier
@@ -240,16 +241,16 @@ model = keras.Sequential()
 # (the initial coarse front-end)
 #  - 2x convolution layer (generation of feature maps)
 #  - 1x pooling layer (downsampling of feature-maps)
-model.add(keras.layers.Conv2D(filters = 32, kernel_size = (3, 3), strides = (1, 1), padding = 'same', activation = 'relu',
+model.add(keras.layers.Conv2D(filters = nr_filters, kernel_size = (3, 3), strides = (1, 1), padding = 'same', activation = 'relu',
                               input_shape = (x_train.shape[1], x_train.shape[2], 1), batch_size = batch_size))
-conv_group(model, 1, 16)
+conv_group(model, 1, nr_filters)
 
 # (finer front-end groups)
 #  - 2x convolution layer (generation of feature maps)
 #  - 1x pooling layer (downsampling of feature-maps)
-conv_group(model, 2, 32)
-#conv_group(model, 3, 64)
-#conv_group(model, 3, 128)
+conv_group(model, 2, nr_filters * 2)
+#conv_group(model, 3, nr_filters * 4)
+#conv_group(model, 3, nr_filters * 8)
 
 # ---------------------------
 # following layers are analogous to those in the practice '01a_introduction'.
@@ -381,8 +382,8 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 #x_train = x_train.astype(numpy.float32)
 
 callbacks = [
-    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name))
-    #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
+    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name)),
+    keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), save_freq = 'epoch')
 ]
 
 x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)

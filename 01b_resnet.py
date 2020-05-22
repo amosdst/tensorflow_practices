@@ -223,6 +223,7 @@ import tensorflow.keras as keras
 model_name = '01b_resnet'
 batch_size = 16
 nr_epochs = 16
+nr_filters = 32
 
 # ----------------------------------------------------------------------------
 # The Microsoft ResNet type of CNN Model for Classifier
@@ -248,20 +249,20 @@ def residual_block(nr_filters, x_in) :
 x_in = keras.Input(shape = (x_train.shape[1], x_train.shape[2], 1), batch_size = batch_size)
 
 # (front-end) the first residual block
-x = residual_block(16, x_in)
-x = conv_block(32, x)
+x = residual_block(nr_filters, x_in)
+x = conv_block(nr_filters * 2, x)
 
 # (front-end) the second residual block
-x = residual_block(32, x)
-x = conv_block(64, x)
+x = residual_block(nr_filters * 2, x)
+x = conv_block(nr_filters * 4, x)
 
 # (front-end)
 # ......
-x = residual_block(64, x)
-#x = conv_block(128, x)
+x = residual_block(nr_filters * 4, x)
+#x = conv_block(nr_filters * 8, x)
 
-#x = residual_block(128, x)
-#x = conv_block(256, x)
+#x = residual_block(nr_filters * 8, x)
+#x = conv_block(nr_filters * 16, x)
 
 # (front-end) the final pooling layer
 x = keras.layers.GlobalAveragePooling2D()(x)
@@ -400,8 +401,8 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 #x_train = x_train.astype(numpy.float32)
 
 callbacks = [
-    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name))
-    #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
+    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name)),
+    keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), save_freq = 'epoch')
 ]
 
 x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)

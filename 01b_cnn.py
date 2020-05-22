@@ -223,6 +223,7 @@ import tensorflow.keras as keras
 model_name = '01b_cnn'
 batch_size = 16
 nr_epochs = 16
+nr_filters = 32
 
 # ----------------------------------------------------------------------------
 # The Convolutional Neural Network Model for Classifier
@@ -231,7 +232,7 @@ nr_epochs = 16
 model = keras.Sequential()
 
 # (front-end) the convolution layer (generation of feature maps)
-model.add(keras.layers.Conv2D(filters = 16, kernel_size = (3, 3), strides = (1, 1), padding = 'same', activation = 'relu',
+model.add(keras.layers.Conv2D(filters = nr_filters, kernel_size = (3, 3), strides = (1, 1), padding = 'same', activation = 'relu',
                               input_shape = (x_train.shape[1], x_train.shape[2], 1), batch_size = batch_size))
 
 # (front-end) the pooling layer (downsampling of feature-maps)
@@ -367,8 +368,8 @@ model.compile(loss = 'sparse_categorical_crossentropy', optimizer = 'adam', metr
 #x_train = x_train.astype(numpy.float32)
 
 callbacks = [
-    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name))
-    #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
+    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name)),
+    keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), save_freq = 'epoch')
 ]
 
 x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)

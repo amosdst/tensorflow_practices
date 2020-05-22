@@ -393,8 +393,8 @@ data_generator.fit(x_train)
 #x_train = x_train.astype(numpy.float32)
 
 callbacks = [
-    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name))
-    #keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), period = 1, save_freq = 'epoch')
+    keras.callbacks.TensorBoard(log_dir = './tb/%s' % (model_name)),
+    keras.callbacks.ModelCheckpoint(filepath = './chkp/%s_{epoch:03d}' % (model_name), save_freq = 'epoch')
 ]
 
 #history = model.fit(data_generator.flow(x_train, y_train, batch_size = batch_size), epochs = nr_epochs, verbose = 1, callbacks = callbacks)
